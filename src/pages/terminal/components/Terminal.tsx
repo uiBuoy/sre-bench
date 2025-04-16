@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/Button";
 import useTimer from "../../../hooks/useTimer";
 import useTypewriterEffect from "../../../hooks/useTypewriterEffect";
-import { convertSecondsToTime, getPrecentageFromValue, validateEmail } from "../../../lib/utils";
+import { convertSecondsToTime, getFromStorage, getPrecentageFromValue, isButtonDisable, setToStorage, validateEmail } from "../../../lib/utils";
 import ClockIcon from "../../../assets/svg/icons/clock.svg";
 import Progress from "../../../components/Progress.tsx";
 import ReactMarkdown from "react-markdown";
@@ -53,7 +53,7 @@ const predefinedMessages = [
     },
     {
         question_id: 'm-2',
-        question: "Your email id? (This helps us customize your experience)",
+        question: "Your email id? (vaild email is allowed)",
         possible_answer: '',
         type_check: 'email',
     },
@@ -96,21 +96,21 @@ const defaultHints = {
 const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
     const { time, startTimer, stopTimer, resetTimer } = useTimer();
 
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    // const [displayedText, setDisplayedText] = useState<string>("");
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getFromStorage('currentQuestionIndex', 0));
     const [input, setInput] = useState("");
-    const [visibleMessages, setVisibleMessages] = useState<string[]>([]);
+    const [visibleMessages, setVisibleMessages] = useState<string[]>(getFromStorage('visibleMessages', []));
     const terminalExecutedContainerRef = useRef(null);
-    const [questions, setQuestions] = useState(predefinedMessages);
-    const [answers, setAnswers] = useState([]);
-    const [selectedOption, setSelectedOption] = useState<string>('');
+    const [questions, setQuestions] = useState(getFromStorage('questions', predefinedMessages));
+    const [answers, setAnswers] = useState(getFromStorage('answer', []));
+    const [selectedOption, setSelectedOption] = useState<string>(getFromStorage('userPreference', ''));
     const [showSelectionOptions, setShowSelectionOptions] = useState<boolean>(false);
     const [hoveredSelectionOption, setHoveredSelectionOption] = useState('');
-    const [showActions, setShowActions] = useState<boolean>(false);
+    const [showActions, setShowActions] = useState<boolean>(selectedOption && questions.length ? true : false);
     const [messageToRenderWordByWord, setMessageToRenderWordByWord] = useState<string>('')
     const {displayedText, setDisplayedText} = useTypewriterEffect(messageToRenderWordByWord, []);
+    const [totalRunningTime, setTotalRunningTime] = useState<number>(getFromStorage('totalRunningTime', 0));
 
-    const [IsTerminal2Visible, setIsTerminal2Visible] = useState(false);
+    const [IsTerminal2Visible, setIsTerminal2Visible] = useState(selectedOption ? true : false);
     const [terminal2Hints, setTerminal2Hints] = useState([]);
     const [terminal2visibleMessages, setTerminal2visibleMessages] = useState<string[]>([]);
     const [terminal2Input, setTerminal2Input] = useState("");
@@ -132,8 +132,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
             // get message line to render word by word with removing extra spaces
             let message = questions[currentQuestionIndex].question.trim();
 
-            console.log("currentQuestionIndex", currentQuestionIndex, message)
-            // 
+          
             setMessageToRenderWordByWord(message);
             setDisplayedText("");
 
@@ -162,12 +161,13 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
         }
     }, [currentQuestionIndex]);
 
-    console.log("currentQuestionIndex", currentQuestionIndex)
 
     const updateTheAnswerState = () => {
+    console.log("answer", answers)
+       
         if (answers.length) {
             setAnswers((preState) => {
-                return preState.map((_answer, index) => {
+                const modifiedAnswerState =  preState.map((_answer, index) => {
                     if (index === currentQuestionIndex) {
                         return {
                             ..._answer,
@@ -178,6 +178,8 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                         return _answer;
                     }
                 })
+                setToStorage('answer', modifiedAnswerState);
+                return modifiedAnswerState;
             })
         }
     }
@@ -216,6 +218,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                 }
                 moveToNextQuestion();
             } else if(selectedOption) {
+
                 // options is selected
                 // check that userAnswer is matching to possible_asnwer
                 // if not match the give feedback/error
@@ -241,8 +244,17 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
                         moveToNextQuestion();
                         // reset the on going time for currently asked question
-                        resetTimer();
-                        startTimer();
+                        setTotalRunningTime((prevTime) => prevTime + time);
+
+                        if (currentQuestionIndex + 1 === questions.length) {
+                            console.log("currentQuestionIndex", currentQuestionIndex)
+                            resetTimer();
+                            stopTimer();
+                        }else{
+                            resetTimer();
+                            console.log("start form here", 271)
+                            startTimer();
+                        }
                     }
                     , 1000);
                 }else{
@@ -264,8 +276,18 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
                         moveToNextQuestion();
                         // reset the on going time for currently asked question
-                        resetTimer();
-                        startTimer();
+                        setTotalRunningTime((prevTime) => prevTime + time);
+
+                        if (currentQuestionIndex + 1 === questions.length) {
+                            console.log("currentQuestionIndex", currentQuestionIndex)
+                            resetTimer();
+                            stopTimer();
+                        }else{
+                            resetTimer();
+                            console.log("start form here", 271)
+                            startTimer();
+                        }
+                       
                     }
                     , 2000);
                 }
@@ -294,8 +316,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [visibleMessages.length])
-
+    }, [visibleMessages.length]);
 
 
 
@@ -324,9 +345,12 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
             },
         ].map((_question) =>({..._question, userAnswer: undefined}));
         setSelectedOption(type)
+        setToStorage('userPreference', type);
+        setToStorage('visibleMessages', []);
         // make empty terminal to show new question now
         setVisibleMessages([]);
         setQuestions(apiResponse);
+        setToStorage('questions', apiResponse);
         setAnswers(apiResponse);
         setCurrentQuestionIndex(0);
 
@@ -335,6 +359,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
 
         // start timer for eachquestion
+        console.log("start form here", 344)
         startTimer();
     }
 
@@ -342,13 +367,16 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
     const handleActionClick = (ActionType: string) => {
         if(ActionType === 'submit'){
             setIsChatCompleted(true);
+            console.log("givenAnswerToSubmit", answers)
             if (answers.length) {
                 const givenAnswerToSubmit = answers.filter((_answer) => _answer.userAnswer != undefined)
                 setQuizDetails(givenAnswerToSubmit);
             }
+            setTotalRunningTime(0);
         }else if(ActionType === 'skip'){
             if(currentQuestionIndex === questions.length){
                 setIsChatCompleted(true);
+                setTotalRunningTime(0);
             }
             setVisibleMessages((prev) => [
                 ...prev,
@@ -360,6 +388,8 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
             // go to next question
             moveToNextQuestion();
+            setTotalRunningTime((prevTime) => prevTime + time)
+
         }
        
     }
@@ -367,6 +397,13 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            
+             // Allow normal behavior if typing in an input or textarea
+            const activeTag = document.activeElement?.tagName;
+            if (activeTag === "INPUT" || activeTag === "TEXTAREA") {
+                return;
+            }
+            
             if (event.key === "ArrowLeft") {
                 setHoveredSelectionOption('quiz-1');
                 event.preventDefault();
@@ -389,6 +426,8 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
         };
 
     }, [showSelectionOptions]);
+
+
 
 
 
@@ -486,7 +525,6 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
     }, [terminal2CurrentHintIndex, terminal2Hints?.length]);
 
     const fetchSuggestionCommnads = () =>{
-        console.log("fetch called.....", terminal2Input)
        const matchSuggestions = suggestionCommands.filter((_command) => _command.command.toLocaleLowerCase().includes(terminal2Input.toLocaleLowerCase()));
        setTerminal2SuggestionsList(matchSuggestions);
     }
@@ -500,8 +538,39 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
     
 
 
+
+
+    useEffect(() => {
+      if(visibleMessages.length){
+         setToStorage('visibleMessages', visibleMessages)
+      }
+    }, [visibleMessages]);
+
+    useEffect(() => {
+        if(currentQuestionIndex !=null){
+           setToStorage('currentQuestionIndex', currentQuestionIndex)
+        }
+      }, [currentQuestionIndex]);
+
+    useEffect(() => {
+        if(totalRunningTime){
+           setToStorage('totalRunningTime', totalRunningTime)
+        }
+    }, [totalRunningTime]);
+
+    useEffect(() => {
+        const existingTotalRunningTime = getFromStorage('totalRunningTime', 0);
+
+        if(existingTotalRunningTime){
+        //    TODO: timer did not restart when user forcefuly reload the page
+            startTimer();
+        }
+      }, []);
+
+    
+
     return (
-        <div className="w-full relative h-[600px]">
+        <div className="w-full relative h-svh">
             <div
                 className={`transition-all duration-500 h-full mr-2 ${IsTerminal2Visible ? 'w-1/2 border-r-4 border-white' : 'w-full'}`}
             >
@@ -518,14 +587,15 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                         <div className="flex items-center space-x-4 p-2 mx-12 dark:text-white">
                          
                           <div className=" px-2 py-1">
-                            Question: {currentQuestionIndex+1}/{questions.length}
+                            Question: {currentQuestionIndex}/{questions.length}
                           </div>
                       
                           <div className="flex-1">
-                            <Progress value={getPrecentageFromValue(currentQuestionIndex+1, questions.length)} colorClass="bg-green-500"/>
+                            <Progress value={getPrecentageFromValue(currentQuestionIndex, questions.length)} colorClass="bg-green-500"/>
                           </div>
                       
-                          <div className="whitespace-nowrap">{getPrecentageFromValue(currentQuestionIndex+1, questions.length)}%</div>
+                          <div className="whitespace-nowrap">{getPrecentageFromValue(currentQuestionIndex, questions.length)}%</div>
+                          <div className="whitespace-nowrap">{convertSecondsToTime(totalRunningTime)}</div>
                         </div>
 
     
@@ -551,7 +621,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                                     variant="outline"
                                     size="icon"
                                     onClick={() => handleSelectedQuizType('quiz-1')}
-                                    className={`bg-gray-800 hover:bg-gray-700 ${hoveredSelectionOption === 'quiz-1' ? 'bg-gray-700 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-10 font-mono text-green-400 border-green-400`}
+                                    className={`bg-gray-800 hover:bg-gray-700 ${hoveredSelectionOption === 'quiz-1' ? 'bg-gray-700 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-10 font-mono text-green-400 border-green-400 cursor-pointer`}
                                 >
                                     Quiz
                                 </Button>
@@ -560,7 +630,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                                     variant="outline"
                                     size="icon"
                                     onClick={() => handleSelectedQuizType('quiz-2')}
-                                    className={`bg-gray-800 hover:bg-gray-700 hover:text-green-400 ${hoveredSelectionOption === 'quiz-2' ? 'bg-gray-700 text-green-400' : ''} py-2 h-8 px-10 font-mono text-green-400 border-green-400 break-normal`}
+                                    className={`bg-gray-800 hover:bg-gray-700 hover:text-green-400 ${hoveredSelectionOption === 'quiz-2' ? 'bg-gray-700 text-green-400' : ''} py-2 h-8 px-10 font-mono text-green-400 border-green-400 break-normal cursor-pointer`}
                                 >
                                     Quiz 2
                                 </Button>
@@ -598,7 +668,12 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                                     variant="outline"
                                     size="icon"
                                     onClick={() => handleActionClick('submit')}
-                                    className={`bg-gray-800 hover:bg-gray-700 ${hoveredSelectionOption === 'quiz-1' ? 'bg-gray-700 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-10 font-mono text-green-400 border-green-400`}
+                                    className={`py-2 px-10 h-8 font-mono border transition-colors duration-200 ${
+                                        isButtonDisable(currentQuestionIndex, questions.length)
+                                          ? "bg-gray-800 border-gray-400 text-gray-300 cursor-not-allowed"
+                                          : "bg-gray-800 border-green-400 text-green-400 hover:bg-gray-700 text-green-400 cursor-pointer"
+                                      }`}
+                                    disabled={isButtonDisable(currentQuestionIndex, questions.length)}
                                 >
                                     Submit
                                 </Button>
@@ -607,7 +682,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                                     variant="outline"
                                     size="icon"
                                     onClick={() => handleActionClick('skip')}
-                                    className={`bg-gray-800 hover:bg-gray-700 hover:text-green-400 ${hoveredSelectionOption === 'quiz-2' ? 'bg-gray-700 text-green-400' : ''} py-2 h-8 px-10 font-mono text-green-400 border-green-400`}
+                                    className={`bg-gray-800 hover:bg-gray-700 py-2 h-8 px-10 font-mono text-green-400 border-green-400 cursor-pointer`}
                                 >
                                     Skip
                                 </Button>
@@ -653,7 +728,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                        {/* terminal-2 footer-section */}
                         <div className="relative w-full">
                             {
-                                showTerminal2InputSuggestionList && <ul className="absolute bottom-12 left-0 w-full px-4 py-2">
+                                showTerminal2InputSuggestionList && <ul className="absolute bottom-12 left-0 w-full px-4 py-2 bg-gray-600">
                                     {
                                         terminal2SuggestionsList.map((_command, index) => {
                                             const isSelected = index === terminal2HighlitedSuggestionIndex
@@ -685,7 +760,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                                         onKeyDown={handleKeyDownTerminal2}
                                         className="bg-transparent text-green-400 border-none focus:outline-none ml-2 w-full"
                                         placeholder="Enter your suggestion..."
-                                        autoFocus
+                                        // autoFocus
                                         onFocus={() => setShowTerminal2InputSuggestionList(true)}
                                         onBlur={() => setTimeout(() => {
                                             setShowTerminal2InputSuggestionList(false)

@@ -37,6 +37,7 @@ const useTimer = (): UseTimerReturn => {
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
+         //    TODO: timer did not restart when user forcefully reload the page
         clearInterval(intervalRef.current);
       }
     };

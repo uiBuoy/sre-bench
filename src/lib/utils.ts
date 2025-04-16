@@ -41,3 +41,11 @@ export function validateEmail(email : string) {
   export const getPrecentageFromValue = (currentValue: number, totalValue:number) => {
    return (currentValue/totalValue)*100;
   }
+
+
+  export const isButtonDisable = (index:number, total:number) =>{
+      if(total=== index){
+        return false
+      }
+      return true
+  }
