@@ -4,7 +4,7 @@ import Terminal from './components/Terminal';
 import './terminal.css';
 
 
-import { getFromStorage, setToStorage } from '../../lib/utils';
+import { getFromStorage, getFromStoragePartial, setToStorage } from '../../lib/utils';
 
 
 const ascii = `
@@ -37,8 +37,10 @@ const ascii = `
   `;
 
 export default function TerminalPage() {
-    const [isChatCompleted, setIsChatCompleted] = useState<boolean>(false);
     const [quizDetails, setQuizDetails] = useState([]);
+    const [selectedUserPreference, setSelectedUserPreference] = useState<string>('quiz-2');
+    const [isChatCompleted, setIsChatCompleted] = useState<boolean>(getFromStoragePartial('quiz-1', 'isQuizCompleted', false));
+
 
     useEffect(() => {
       const existing = getFromStorage('quizDetails', []);
@@ -56,6 +58,16 @@ export default function TerminalPage() {
         }
     }, [quizDetails]);
 
+
+  //   useEffect(() => {
+  //     console.log("data========== 1111", selectedUserPreference)
+  //     if (selectedUserPreference !="") {
+  //        const data = getFromStoragePartial(selectedUserPreference);
+
+  //        console.log("data==========", data?.answer)
+  //     }
+  // }, [selectedUserPreference]);
+
     return (
         <div className="bg-gray-900 h-dvh mx-10">
             {
@@ -71,12 +83,19 @@ export default function TerminalPage() {
 
 
                     </>
-                    :
+                    : 
                     <Terminal
                         setIsChatCompleted={setIsChatCompleted}
                         setQuizDetails={setQuizDetails}
+                        setSelectedUserPreference={setSelectedUserPreference}
                     />
             }
+
+        {/* <Terminal
+          setIsChatCompleted={setIsChatCompleted}
+          setQuizDetails={setQuizDetails}
+          setSelectedUserPreference={setSelectedUserPreference}
+        /> */}
         </div>
 
     )

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/Button";
 import useTimer from "../../../hooks/useTimer";
 import useTypewriterEffect from "../../../hooks/useTypewriterEffect";
-import { convertSecondsToTime, getFromStorage, getPrecentageFromValue, isButtonDisable, setToStorage, validateEmail } from "../../../lib/utils";
+import { convertSecondsToTime, getFromStorage, getFromStoragePartial, getPrecentageFromValue, isButtonDisable, setToStorage, setToStoragePartial, validateEmail } from "../../../lib/utils";
 import ClockIcon from "../../../assets/svg/icons/clock.svg";
 import Progress from "../../../components/Progress.tsx";
 import ReactMarkdown from "react-markdown";
@@ -93,22 +93,22 @@ const defaultHints = {
     ],
 }
 
-const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
+const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails, setSelectedUserPreference }) => {
     const { time, startTimer, stopTimer, resetTimer } = useTimer();
 
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getFromStorage('currentQuestionIndex', 0));
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getFromStoragePartial('quiz-1', 'currentQuestionIndex', 0)); //getFromStorage('currentQuestionIndex', 0)
     const [input, setInput] = useState("");
-    const [visibleMessages, setVisibleMessages] = useState<string[]>(getFromStorage('visibleMessages', []));
+    const [visibleMessages, setVisibleMessages] = useState<string[]>(getFromStoragePartial('quiz-1', 'visibleMessages', []));
     const terminalExecutedContainerRef = useRef(null);
-    const [questions, setQuestions] = useState(getFromStorage('questions', predefinedMessages));
-    const [answers, setAnswers] = useState(getFromStorage('answer', []));
-    const [selectedOption, setSelectedOption] = useState<string>(getFromStorage('userPreference', ''));
+    const [questions, setQuestions] = useState(getFromStoragePartial('quiz-1', 'questions', predefinedMessages));
+    const [answers, setAnswers] = useState(getFromStoragePartial('quiz-1', 'answer', []));
+    const [selectedOption, setSelectedOption] = useState<string>(getFromStoragePartial('quiz-1', 'userPreference', ''));
     const [showSelectionOptions, setShowSelectionOptions] = useState<boolean>(false);
     const [hoveredSelectionOption, setHoveredSelectionOption] = useState('');
     const [showActions, setShowActions] = useState<boolean>(selectedOption && questions.length ? true : false);
     const [messageToRenderWordByWord, setMessageToRenderWordByWord] = useState<string>('')
     const {displayedText, setDisplayedText} = useTypewriterEffect(messageToRenderWordByWord, []);
-    const [totalRunningTime, setTotalRunningTime] = useState<number>(getFromStorage('totalRunningTime', 0));
+    const [totalRunningTime, setTotalRunningTime] = useState<number>(getFromStoragePartial('quiz-1', 'totalRunningTime', 0));
 
     const [IsTerminal2Visible, setIsTerminal2Visible] = useState(selectedOption ? true : false);
     const [terminal2Hints, setTerminal2Hints] = useState([]);
@@ -178,7 +178,8 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                         return _answer;
                     }
                 })
-                setToStorage('answer', modifiedAnswerState);
+                // setToStorage('answer', modifiedAnswerState);
+                setToStoragePartial(selectedOption, 'answer', modifiedAnswerState);
                 return modifiedAnswerState;
             })
         }
@@ -344,13 +345,19 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
                 possible_answer: 'Jaisamand Lake'
             },
         ].map((_question) =>({..._question, userAnswer: undefined}));
-        setSelectedOption(type)
-        setToStorage('userPreference', type);
-        setToStorage('visibleMessages', []);
+        setSelectedOption(type);
+        setSelectedUserPreference(type);
+        // setToStorage('userPreference', type);
+        setToStoragePartial(type, 'userPreference', type);
+        // setToStorage('visibleMessages', []);
+        setToStoragePartial(type, 'visibleMessages', []);
+
         // make empty terminal to show new question now
         setVisibleMessages([]);
         setQuestions(apiResponse);
-        setToStorage('questions', apiResponse);
+        // setToStorage('questions', apiResponse);
+        setToStoragePartial(type, 'questions', apiResponse);
+
         setAnswers(apiResponse);
         setCurrentQuestionIndex(0);
 
@@ -366,13 +373,14 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
     const handleActionClick = (ActionType: string) => {
         if(ActionType === 'submit'){
-            setIsChatCompleted(true);
             console.log("givenAnswerToSubmit", answers)
             if (answers.length) {
                 const givenAnswerToSubmit = answers.filter((_answer) => _answer.userAnswer != undefined)
                 setQuizDetails(givenAnswerToSubmit);
             }
             setTotalRunningTime(0);
+            setIsChatCompleted(true);
+            setToStoragePartial(selectedOption, 'isQuizCompleted', true);
         }else if(ActionType === 'skip'){
             if(currentQuestionIndex === questions.length){
                 setIsChatCompleted(true);
@@ -542,24 +550,27 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails }) => {
 
     useEffect(() => {
       if(visibleMessages.length){
-         setToStorage('visibleMessages', visibleMessages)
+        //  setToStorage('visibleMessages', visibleMessages)
+         setToStoragePartial(selectedOption, 'visibleMessages', visibleMessages);
       }
     }, [visibleMessages]);
 
     useEffect(() => {
         if(currentQuestionIndex !=null){
-           setToStorage('currentQuestionIndex', currentQuestionIndex)
+        //    setToStorage('currentQuestionIndex', currentQuestionIndex)
+           setToStoragePartial(selectedOption, 'currentQuestionIndex', currentQuestionIndex);
         }
       }, [currentQuestionIndex]);
 
     useEffect(() => {
         if(totalRunningTime){
-           setToStorage('totalRunningTime', totalRunningTime)
+        //    setToStorage('totalRunningTime', totalRunningTime)
+           setToStoragePartial(selectedOption, 'totalRunningTime', totalRunningTime);
         }
     }, [totalRunningTime]);
 
     useEffect(() => {
-        const existingTotalRunningTime = getFromStorage('totalRunningTime', 0);
+        const existingTotalRunningTime = getFromStoragePartial('quiz-1', 'totalRunningTime', 0);
 
         if(existingTotalRunningTime){
         //    TODO: timer did not restart when user forcefuly reload the page

@@ -36,6 +36,85 @@ export function validateEmail(email : string) {
       console.error('Failed to write to localStorage', err);
     }
   };
+
+
+  // Define the shape of one quiz entry
+export interface QuizData {
+  answer?: any[];
+  questions?: any[];
+  time?: number;
+  userPreference?: string;
+  visibleMessages?: string[];
+  currentQuestionIndex?: number;
+  totalRunningTime?: number;
+  isQuizCompleted?: boolean;
+}
+
+// Shape of the entire terminal object
+export interface TerminalStorage {
+  [quizId: string]: QuizData;
+}
+
+
+const LOCAL_STORAGE_KEY = "terminal";
+
+export const setToStoragePartial = <K extends keyof QuizData>(
+  quizId: string,
+  field: K,
+  value: QuizData[K]
+): void => {
+  try {
+    if(!quizId) return;
+
+    const terminal: TerminalStorage = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+
+    const currentQuizData = terminal[quizId] || {};
+
+    const updatedQuizData: QuizData = {
+      ...currentQuizData,
+      [field]: value,
+    };
+
+    const updatedTerminal: TerminalStorage = {
+      ...terminal,
+      [quizId]: updatedQuizData,
+    };
+
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedTerminal));
+  } catch (error) {
+    console.error("Error setting to storage:", error);
+  }
+};
+
+
+
+export const getFromStoragePartial = <T>(
+  quizId: string | null,
+  field: keyof QuizData | null,
+  fallback: T
+): T => {
+  try {
+    const terminal: TerminalStorage = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+
+    console.log("store---------------", field, terminal, )
+    if (!quizId) {
+      return (terminal as unknown as T) ?? fallback;
+    }
+
+    const quizData = terminal[quizId];
+
+    if (!quizData) return fallback;
+
+    if (field) {
+      return (quizData[field] as T) ?? fallback;
+    }
+
+    return quizData as unknown as T;
+  } catch {
+    return fallback;
+  }
+};
+
   
   
   export const getPrecentageFromValue = (currentValue: number, totalValue:number) => {
@@ -49,3 +128,7 @@ export function validateEmail(email : string) {
       }
       return true
   }
+
+
+
+  
