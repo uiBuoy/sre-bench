@@ -581,7 +581,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails, setSelectedUse
     
 
     return (
-        <div className="w-full relative h-svh">
+        <div className="w-full relative h-full border-red-500">
             <div
                 className={`transition-all duration-500 h-full mr-2 ${IsTerminal2Visible ? 'w-1/2 border-r-4 border-white' : 'w-full'}`}
             >

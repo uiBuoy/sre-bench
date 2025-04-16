@@ -69,7 +69,7 @@ export default function TerminalPage() {
   // }, [selectedUserPreference]);
 
     return (
-        <div className="bg-gray-900 h-dvh mx-10">
+        <div className="bg-gray-900 h-dvh px-4 pb-2">
             {
                 isChatCompleted ?
                     <>
