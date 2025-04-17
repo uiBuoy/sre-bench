@@ -93,22 +93,22 @@ const defaultHints = {
     ],
 }
 
-const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails, setSelectedUserPreference }) => {
+const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, selectedUserPreference }) => {
     const { time, startTimer, stopTimer, resetTimer } = useTimer();
 
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getFromStoragePartial('quiz-1', 'currentQuestionIndex', 0)); //getFromStorage('currentQuestionIndex', 0)
+    const [selectedOption, setSelectedOption] = useState<string>(getFromStoragePartial(selectedUserPreference, 'userPreference', ''));
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getFromStoragePartial(selectedOption, 'currentQuestionIndex', 0)); //getFromStorage('currentQuestionIndex', 0)
     const [input, setInput] = useState("");
-    const [visibleMessages, setVisibleMessages] = useState<string[]>(getFromStoragePartial('quiz-1', 'visibleMessages', []));
+    const [visibleMessages, setVisibleMessages] = useState<string[]>(getFromStoragePartial(selectedOption, 'visibleMessages', []));
     const terminalExecutedContainerRef = useRef(null);
-    const [questions, setQuestions] = useState(getFromStoragePartial('quiz-1', 'questions', predefinedMessages));
-    const [answers, setAnswers] = useState(getFromStoragePartial('quiz-1', 'answer', []));
-    const [selectedOption, setSelectedOption] = useState<string>(getFromStoragePartial('quiz-1', 'userPreference', ''));
+    const [questions, setQuestions] = useState(getFromStoragePartial(selectedOption, 'questions', predefinedMessages));
+    const [answers, setAnswers] = useState(getFromStoragePartial(selectedOption, 'answer', []));
     const [showSelectionOptions, setShowSelectionOptions] = useState<boolean>(false);
     const [hoveredSelectionOption, setHoveredSelectionOption] = useState('');
     const [showActions, setShowActions] = useState<boolean>(selectedOption && questions.length ? true : false);
     const [messageToRenderWordByWord, setMessageToRenderWordByWord] = useState<string>('')
     const {displayedText, setDisplayedText} = useTypewriterEffect(messageToRenderWordByWord, []);
-    const [totalRunningTime, setTotalRunningTime] = useState<number>(getFromStoragePartial('quiz-1', 'totalRunningTime', 0));
+    const [totalRunningTime, setTotalRunningTime] = useState<number>(getFromStoragePartial(selectedOption, 'totalRunningTime', 0));
 
     const [IsTerminal2Visible, setIsTerminal2Visible] = useState(selectedOption ? true : false);
     const [terminal2Hints, setTerminal2Hints] = useState([]);
@@ -322,68 +322,78 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails, setSelectedUse
 
 
     const handleSelectedQuizType = (type: string) => {
-        handleAddNewTerminal();
-        const apiResponse = [
-            {
-                question_id: 'r-1',
-                question: 'What is the capital of Rajasthan?',
-                possible_answer: 'Jaipur'
-            },
-            {
-                question_id: 'r-2',
-                question: 'What is the official language of Rajasthan?',
-                possible_answer: 'Rajasthani'
-            },
-            {
-                question_id: 'r-3',
-                question: 'Which Rajput emperor is credited with building many forts in Rajasthan, including Chittorgarh?',
-                possible_answer: 'Maharan Kumbha'
-            },
-            {
-                question_id: 'r-4',
-                question: 'Which is the largest artificial lake in Rajasthan?',
-                possible_answer: 'Jaisamand Lake'
-            },
-        ].map((_question) =>({..._question, userAnswer: undefined}));
-        setSelectedOption(type);
-        setSelectedUserPreference(type);
-        // setToStorage('userPreference', type);
-        setToStoragePartial(type, 'userPreference', type);
-        // setToStorage('visibleMessages', []);
-        setToStoragePartial(type, 'visibleMessages', []);
+        const isQuizCompleted = getFromStoragePartial(type, 'isQuizCompleted', false);
+        if (isQuizCompleted) {
+            setIsChatCompleted(true);
+            setToStoragePartial(selectedOption, 'isQuizCompleted', true);
+            setSelectedUserPreference(type);
+        } else {
+            handleAddNewTerminal();
+            const apiResponse = [
+                {
+                    question_id: 'r-1',
+                    question: 'What is the capital of Rajasthan?',
+                    possible_answer: 'Jaipur'
+                },
+                {
+                    question_id: 'r-2',
+                    question: 'What is the official language of Rajasthan?',
+                    possible_answer: 'Rajasthani'
+                },
+                {
+                    question_id: 'r-3',
+                    question: 'Which Rajput emperor is credited with building many forts in Rajasthan, including Chittorgarh?',
+                    possible_answer: 'Maharan Kumbha'
+                },
+                {
+                    question_id: 'r-4',
+                    question: 'Which is the largest artificial lake in Rajasthan?',
+                    possible_answer: 'Jaisamand Lake'
+                },
+            ].map((_question) => ({ ..._question, userAnswer: undefined }));
+            setSelectedOption(type);
+            setSelectedUserPreference(type);
+            // setting the userPreference to user-object also so when user start once gaine so he know could know about his last qui also
+            setToStoragePartial('user', 'userPreference', type);
+            // setToStorage('userPreference', type);
+            setToStoragePartial(type, 'userPreference', type);
+            // setToStorage('visibleMessages', []);
+            setToStoragePartial(type, 'visibleMessages', []);
 
-        // make empty terminal to show new question now
-        setVisibleMessages([]);
-        setQuestions(apiResponse);
-        // setToStorage('questions', apiResponse);
-        setToStoragePartial(type, 'questions', apiResponse);
+            // make empty terminal to show new question now
+            setVisibleMessages([]);
+            setQuestions(apiResponse);
+            // setToStorage('questions', apiResponse);
+            setToStoragePartial(type, 'questions', apiResponse);
 
-        setAnswers(apiResponse);
-        setCurrentQuestionIndex(0);
+            setAnswers(apiResponse);
+            setCurrentQuestionIndex(0);
 
-        // show actions(submit/skip) if options is selected
-        setShowActions(true);
+            // show actions(submit/skip) if options is selected
+            setShowActions(true);
 
 
-        // start timer for eachquestion
-        console.log("start form here", 344)
-        startTimer();
+            // start timer for eachquestion
+            console.log("start form here", 344)
+            startTimer();
+        }
     }
 
 
     const handleActionClick = (ActionType: string) => {
         if(ActionType === 'submit'){
-            console.log("givenAnswerToSubmit", answers)
-            if (answers.length) {
-                const givenAnswerToSubmit = answers.filter((_answer) => _answer.userAnswer != undefined)
-                setQuizDetails(givenAnswerToSubmit);
-            }
+          
+            // if (answers.length) {
+            //     const givenAnswerToSubmit = answers.filter((_answer) => _answer.userAnswer != undefined)
+            //     // setQuizDetails(givenAnswerToSubmit);
+            // }
             setTotalRunningTime(0);
             setIsChatCompleted(true);
             setToStoragePartial(selectedOption, 'isQuizCompleted', true);
         }else if(ActionType === 'skip'){
             if(currentQuestionIndex === questions.length){
                 setIsChatCompleted(true);
+                setToStoragePartial(selectedOption, 'isQuizCompleted', true);
                 setTotalRunningTime(0);
             }
             setVisibleMessages((prev) => [
@@ -570,13 +580,27 @@ const Terminal: React.FC = ({ setIsChatCompleted, setQuizDetails, setSelectedUse
     }, [totalRunningTime]);
 
     useEffect(() => {
-        const existingTotalRunningTime = getFromStoragePartial('quiz-1', 'totalRunningTime', 0);
-
+        const existingTotalRunningTime = getFromStoragePartial(selectedOption, 'totalRunningTime', 0);
         if(existingTotalRunningTime){
         //    TODO: timer did not restart when user forcefuly reload the page
             startTimer();
         }
       }, []);
+
+    useEffect(() => {
+        const isQuizCompleted = getFromStoragePartial(selectedOption, 'isQuizCompleted', false);
+        const userDetails = getFromStoragePartial('user', 'visibleMessages', []);
+        
+        if(isQuizCompleted){
+            setVisibleMessages(userDetails);
+            setSelectedOption('');
+            setShowActions(false);
+            setQuestions(predefinedMessages);
+            setCurrentQuestionIndex(2);
+            setIsTerminal2Visible(false);
+        }
+    }, [])
+    
 
     
 

@@ -1,3 +1,4 @@
+import { Button } from "../../../components/Button";
 import { convertSecondsToTime } from "../../../lib/utils";
 import React, { useState, useEffect } from "react";
 
@@ -5,7 +6,7 @@ import React, { useState, useEffect } from "react";
 
 const checkUserAnswerKeywordsIncludesInActualAnswer = (userAnser: string, actualAnswer: string) => {
     console.log("userAnser", userAnser)
-    if (userAnser !="" && actualAnswer.trim().toLowerCase().includes(userAnser.trim().toLowerCase())){
+    if (userAnser !="" && userAnser !=undefined && actualAnswer.trim().toLowerCase().includes(userAnser.trim().toLowerCase())){
         return '✅';
     }else{
         return '❌';
@@ -39,7 +40,7 @@ const TableRow: React.FC<TableRowProps> = ({ row, isHighlighted }) => {
     );
 };
 
-const TerminalTable: React.FC = ({ data }) => {
+const TerminalTable: React.FC = ({ data, handleBack,  selectedUserPreference }) => {
     // Column headers
     const columns = ["Question Id", "Question", "Given Answer", "answer", "status", "time", "accuracy"];
 
@@ -81,8 +82,8 @@ const TerminalTable: React.FC = ({ data }) => {
     }, [rows.length]); // Dependency on rows.length to ensure we reattach event listener if rows change
 
     return (
-        <div className="bg-gray-900 text-green-400 font-mono p-6 rounded-md shadow-lg">
-            <h2 className="text-lg text-center mb-6 text-gray-100 font-bold">System Performance Metrics</h2>
+        <div className="bg-gray-900 text-green-400 font-mono p-6 ">
+            <h2 className="text-lg text-center mb-6 text-gray-100 font-bold">System Performance Metrics of {selectedUserPreference}</h2>
             <div className="overflow-x-auto">
                 <table className="min-w-full table-auto border-collapse border-dashed border-2 border-gray-500 rounded-lg">
                     <thead className="bg-gray-800">
@@ -113,6 +114,18 @@ const TerminalTable: React.FC = ({ data }) => {
                 <p className="text-gray-400">TOTAL ATTEMPT: {data.length}</p>
                 <p className="text-gray-400">TOTAL TIME: {data.reduce((acc, curr) => acc+curr?.time, 0)}</p>
             </div>
+
+            <div className="w-full text-center my-8">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleBack(false)}
+                    className={`bg-gray-800 mx-auto hover:bg-gray-700 hover:text-white h-10 w-60 px-20 font-mono text-green-400 border-green-400 cursor-pointer`}
+                >
+                    Back to main screen
+                </Button>
+            </div>
+           
         </div>
     );
 };

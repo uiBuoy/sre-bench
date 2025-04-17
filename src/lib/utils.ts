@@ -64,7 +64,7 @@ export const setToStoragePartial = <K extends keyof QuizData>(
   value: QuizData[K]
 ): void => {
   try {
-    if(!quizId) return;
+    if(!quizId) quizId = 'user';
 
     const terminal: TerminalStorage = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
 
@@ -94,9 +94,10 @@ export const getFromStoragePartial = <T>(
   fallback: T
 ): T => {
   try {
+    if(!quizId) return fallback;
+
     const terminal: TerminalStorage = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
 
-    console.log("store---------------", field, terminal, )
     if (!quizId) {
       return (terminal as unknown as T) ?? fallback;
     }
