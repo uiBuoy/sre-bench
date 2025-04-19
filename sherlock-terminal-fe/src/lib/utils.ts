@@ -94,7 +94,7 @@ export const getFromStoragePartial = <T>(
   fallback: T
 ): T => {
   try {
-    if(!quizId) return fallback;
+    if(!quizId) quizId = 'user';
 
     const terminal: TerminalStorage = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
 

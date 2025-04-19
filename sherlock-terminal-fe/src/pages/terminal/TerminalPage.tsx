@@ -5,6 +5,7 @@ import './terminal.css';
 
 
 import { getFromStorage, getFromStoragePartial, setToStorage } from '../../lib/utils';
+import { getQuizAnalysis } from '../../apis/terminal';
 
 
 const ascii = `
@@ -39,7 +40,7 @@ const ascii = `
 export default function TerminalPage() {
   const [selectedUserPreference, setSelectedUserPreference] = useState<string>(getFromStoragePartial('user', 'userPreference', ''));
   const [isChatCompleted, setIsChatCompleted] = useState<boolean>(getFromStoragePartial(selectedUserPreference, 'isQuizCompleted', false));
-  const newQuizDetails = getFromStoragePartial(selectedUserPreference, 'answer', []);
+  const [newQuizDetails, setNewQuizDetails] = useState(getFromStoragePartial(selectedUserPreference, 'answer', []));
 
   const [showFinalResult, setFinalResult] = useState(isChatCompleted);
 
@@ -52,6 +53,22 @@ export default function TerminalPage() {
   //   // select the userPrefrence which is already selected, 
   //   // what's why useEffect did not call render-once gain 
   // }, [isChatCompleted, selectedUserPreference])
+
+  const fetchQuizAnalysis = async() => {
+     let data =  await getQuizAnalysis(selectedUserPreference);
+     data = await data?.json();
+    //  setNewQuizDetails(data);
+     console.log("data=>>>>>>>>>", data, selectedUserPreference)
+  }
+
+  useEffect(() => {
+   if(isChatCompleted){
+    // TODO: need ot work her get the final analysis data to see the quiz report
+    console.log("")
+     fetchQuizAnalysis();
+   }
+  }, [isChatCompleted])
+  
 
 
   return (

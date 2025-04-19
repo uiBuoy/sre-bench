@@ -5,9 +5,10 @@ import useTimer from "../../../hooks/useTimer";
 import useTypewriterEffect from "../../../hooks/useTypewriterEffect";
 import { convertSecondsToTime, getFromStorage, getFromStoragePartial, getPrecentageFromValue, isButtonDisable, setToStorage, setToStoragePartial, validateEmail } from "../../../lib/utils";
 import ClockIcon from "../../../assets/svg/icons/clock.svg";
-import Progress from "../../../components/Progress.tsx";
+import Progress from "../../../components/Progress";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
+import { createUser, getAllQuizzes, getQuestions, getSuggestions, submitAnswer } from "../../../apis/terminal";
 
 
 
@@ -18,49 +19,50 @@ const markdownTableResponse = {
     "content": "| Name    | Age | City      |\n|---------|-----|-----------|\n| Anilraj   | 27  | GGN  |\n| Tony     | 30  | Mewar |\n| muskan | 25 | marwar   |"
   }
 
-const suggestionCommands = [
-    {
-        command_id: 'cmd-1',
-        command: 'This is my command one'
-    },
-    {
-        command_id: 'cmd-2',
-        command: 'It could be Alwar'
-    },
-    {
-        command_id: 'cmd-3',
-        command: 'It clouser to all big city of that state'
-    },
-    {
-        command_id: 'cmd-4',
-        command: 'City name will be Jodhpur'
-    },
-    {
-        command_id: 'cmd-5',
-        command: 'City could have good amout of water supply'
-    },
-    {
-        command_id: 'cmd-6',
-        command: 'That City could have better trasportaion connectivty with other biggest city of India'
-    }
-]
+// const suggestionCommands = [
+//     {
+//         command_id: 'cmd-1',
+//         command: 'This is my command one'
+//     },
+//     {
+//         command_id: 'cmd-2',
+//         command: 'It could be Alwar'
+//     },
+//     {
+//         command_id: 'cmd-3',
+//         command: 'It clouser to all big city of that state'
+//     },
+//     {
+//         command_id: 'cmd-4',
+//         command: 'City name will be Jodhpur'
+//     },
+//     {
+//         command_id: 'cmd-5',
+//         command: 'City could have good amout of water supply'
+//     },
+//     {
+//         command_id: 'cmd-6',
+//         command: 'That City could have better trasportaion connectivty with other biggest city of India'
+//     }
+// ]
 
 const predefinedMessages = [
     {
-        question_id: 'm-1',
+        id: 'm-1',
         question: "Hello. Welcome to the Race Against the AI.\nWhat's your name? (optional, will not be used on the leaderboard)",
-        possible_answer: 'Name (optional)'
+        possible_answer: 'Name (optional)',
+        type_check: 'name',
     },
     {
-        question_id: 'm-2',
+        id: 'm-2',
         question: "Your email id? (vaild email is allowed)",
         possible_answer: '',
         type_check: 'email',
     },
     {
-        question_id: 'm-3',
+        id: 'm-3',
         question: "Choose option to select",
-        possible_answer: 'Option (to be selected)'
+        possible_answer: 'Option (to be selected)',
     }
 ];
 
@@ -96,6 +98,7 @@ const defaultHints = {
 const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, selectedUserPreference }) => {
     const { time, startTimer, stopTimer, resetTimer } = useTimer();
 
+    const [quizOptions, setQuizOptions] = useState([]);
     const [selectedOption, setSelectedOption] = useState<string>(getFromStoragePartial(selectedUserPreference, 'userPreference', ''));
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getFromStoragePartial(selectedOption, 'currentQuestionIndex', 0)); //getFromStorage('currentQuestionIndex', 0)
     const [input, setInput] = useState("");
@@ -109,6 +112,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
     const [messageToRenderWordByWord, setMessageToRenderWordByWord] = useState<string>('')
     const {displayedText, setDisplayedText} = useTypewriterEffect(messageToRenderWordByWord, []);
     const [totalRunningTime, setTotalRunningTime] = useState<number>(getFromStoragePartial(selectedOption, 'totalRunningTime', 0));
+    const [userDetails, setUserDetails] = useState<{name: string; email: string}>({name: '', email: ''});
 
     const [IsTerminal2Visible, setIsTerminal2Visible] = useState(selectedOption ? true : false);
     const [terminal2Hints, setTerminal2Hints] = useState([]);
@@ -127,6 +131,12 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
     };
 
 
+    const fetchQuizessOptions = async() => {
+        let response = await getAllQuizzes();
+        response =  await response?.json();
+        setQuizOptions(response?.map((_resp) => ({id: _resp.id, category:_resp.category })))
+    }
+
     useEffect(() => {
         if (currentQuestionIndex < questions.length) {
             // get message line to render word by word with removing extra spaces
@@ -140,6 +150,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
             if (message === "Choose option to select") {
                 // hasSelectionQuestion = true;
                 setShowSelectionOptions(true);
+                fetchQuizessOptions();
             }
 
             // message = message[0]+message; // it is not picking up the first later so adding one extra later
@@ -205,7 +216,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
     }
 
 
-    const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleEnterKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter" && input.trim()) {
             if (questions[currentQuestionIndex]?.type_check === 'email') {
                 if (validateEmail(input)) {
@@ -214,90 +225,140 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                         `${questions[currentQuestionIndex].question}`,
                         `$ ${input}`,
                     ]);
+                    setUserDetails((prevState) => ({...prevState, email: input}))
                 } else {
                     return;
                 }
                 moveToNextQuestion();
             } else if(selectedOption) {
 
+                // add input answer to visible message
+                setVisibleMessages((prev) => [
+                    ...prev,
+                    `${questions[currentQuestionIndex].question}`,
+                    `$ ${input}`
+                ]);
+
+                // check whether user's answer is correct or not
+                 const answerBody = {
+                    params: {
+                        quizId: selectedOption,
+                        questionId: questions[currentQuestionIndex]?.id,
+                    },
+                    body: {
+                        questionId: questions[currentQuestionIndex]?.id,
+                        answer: input,
+                        time
+                    }
+                 }
+                 let answerResponse = await submitAnswer(answerBody);
+                 answerResponse = await answerResponse?.json();
+
+                setDisplayedText("");
+                setMessageToRenderWordByWord(answerResponse?.feedback);
+                stopTimer(); // timer should be stop untill feedback doesnot completly typed(or untill move to next question)
+
+                setTimeout(() => {
+                    setVisibleMessages((prev) => [
+                        ...prev,
+                        answerResponse?.feedback
+                    ]);
+
+                    moveToNextQuestion();
+                    // reset the on going time for currently asked question
+                    setTotalRunningTime((prevTime) => prevTime + time);
+
+                    if (currentQuestionIndex + 1 === questions.length) {
+                        resetTimer();
+                        stopTimer();
+                    }else{
+                        resetTimer();
+                        startTimer();
+                    }
+                }
+                , 1000);
+
                 // options is selected
                 // check that userAnswer is matching to possible_asnwer
                 // if not match the give feedback/error
-                if(input.toLocaleLowerCase() === questions[currentQuestionIndex]?.possible_answer.toLocaleLowerCase()){
-                    const feedback = `FEEDBACK: Well done you are doing good \n ///////////////////////////// -Feedback ended- /////////////////////////////////////`
-                    setVisibleMessages((prev) => [
-                        ...prev,
-                        `${questions[currentQuestionIndex].question}`,
-                        `$ ${input}`
-                    ]);
-                    // moveToNextQuestion();
-                    // resetTimer();
+                // if(input.toLocaleLowerCase() === questions[currentQuestionIndex]?.possible_answer.toLocaleLowerCase()){
+                //     const feedback = `FEEDBACK: Well done you are doing good \n ///////////////////////////// -Feedback ended- /////////////////////////////////////`
+                //     setVisibleMessages((prev) => [
+                //         ...prev,
+                //         `${questions[currentQuestionIndex].question}`,
+                //         `$ ${input}`
+                //     ]);
+                //     // moveToNextQuestion();
+                //     // resetTimer();
 
-                    setDisplayedText("");
-                    setMessageToRenderWordByWord(feedback);
-                    stopTimer(); // timer should be stop untill feedback doesnot completly typed(or untill move to next question)
+                //     setDisplayedText("");
+                //     setMessageToRenderWordByWord(feedback);
+                //     stopTimer(); // timer should be stop untill feedback doesnot completly typed(or untill move to next question)
 
-                    setTimeout(() => {
-                        setVisibleMessages((prev) => [
-                            ...prev,
-                            feedback
-                        ]);
+                //     setTimeout(() => {
+                //         setVisibleMessages((prev) => [
+                //             ...prev,
+                //             feedback
+                //         ]);
 
-                        moveToNextQuestion();
-                        // reset the on going time for currently asked question
-                        setTotalRunningTime((prevTime) => prevTime + time);
+                //         moveToNextQuestion();
+                //         // reset the on going time for currently asked question
+                //         setTotalRunningTime((prevTime) => prevTime + time);
 
-                        if (currentQuestionIndex + 1 === questions.length) {
-                            console.log("currentQuestionIndex", currentQuestionIndex)
-                            resetTimer();
-                            stopTimer();
-                        }else{
-                            resetTimer();
-                            console.log("start form here", 271)
-                            startTimer();
-                        }
-                    }
-                    , 1000);
-                }else{
-                    const feedback = `FEEDBACK: Others who use this device won’t see your activity, so you can browse more privately. This won't change how data is collected by websites that you visit and the services that they use, \n ///////////////////////////// -Feedback ended- /////////////////////////////////////`
-                    setVisibleMessages((prev) => [
-                        ...prev,
-                        `${questions[currentQuestionIndex]?.question}`,
-                        `$ ${input}`
-                    ]);
-                    setDisplayedText("");
-                    setMessageToRenderWordByWord(feedback);
-                    stopTimer(); // timer should be stop untill feedback doesnot completly typed(or untill move to next question)
+                //         if (currentQuestionIndex + 1 === questions.length) {
+                //             console.log("currentQuestionIndex", currentQuestionIndex)
+                //             resetTimer();
+                //             stopTimer();
+                //         }else{
+                //             resetTimer();
+                //             console.log("start form here", 271)
+                //             startTimer();
+                //         }
+                //     }
+                //     , 1000);
+                // }else{
+                //     const feedback = `FEEDBACK: Others who use this device won’t see your activity, so you can browse more privately. This won't change how data is collected by websites that you visit and the services that they use, \n ///////////////////////////// -Feedback ended- /////////////////////////////////////`
+                //     setVisibleMessages((prev) => [
+                //         ...prev,
+                //         `${questions[currentQuestionIndex]?.question}`,
+                //         `$ ${input}`
+                //     ]);
+                //     setDisplayedText("");
+                //     setMessageToRenderWordByWord(feedback);
+                //     stopTimer(); // timer should be stop untill feedback doesnot completly typed(or untill move to next question)
 
-                    setTimeout(() => {
-                        setVisibleMessages((prev) => [
-                            ...prev,
-                            feedback
-                        ]);
+                //     setTimeout(() => {
+                //         setVisibleMessages((prev) => [
+                //             ...prev,
+                //             feedback
+                //         ]);
 
-                        moveToNextQuestion();
-                        // reset the on going time for currently asked question
-                        setTotalRunningTime((prevTime) => prevTime + time);
+                //         moveToNextQuestion();
+                //         // reset the on going time for currently asked question
+                //         setTotalRunningTime((prevTime) => prevTime + time);
 
-                        if (currentQuestionIndex + 1 === questions.length) {
-                            console.log("currentQuestionIndex", currentQuestionIndex)
-                            resetTimer();
-                            stopTimer();
-                        }else{
-                            resetTimer();
-                            console.log("start form here", 271)
-                            startTimer();
-                        }
+                //         if (currentQuestionIndex + 1 === questions.length) {
+                //             console.log("currentQuestionIndex", currentQuestionIndex)
+                //             resetTimer();
+                //             stopTimer();
+                //         }else{
+                //             resetTimer();
+                //             console.log("start form here", 271)
+                //             startTimer();
+                //         }
                        
-                    }
-                    , 2000);
-                }
+                //     }
+                //     , 2000);
+                // }
             }else{
                 setVisibleMessages((prev) => [
                     ...prev,
                     `${questions[currentQuestionIndex].question}`,
                     `$ ${input}`
                 ]);
+                if(questions[currentQuestionIndex]?.type_check === 'name'){
+                    setUserDetails((prevState) => ({...prevState, name: input}))
+                }
                 moveToNextQuestion();
             }
 
@@ -321,7 +382,11 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
 
 
 
-    const handleSelectedQuizType = (type: string) => {
+    const handleSelectedQuizType = async (type: string) => {
+        if(userDetails?.name && userDetails?.email){
+            await createUser(userDetails);
+        }
+        
         const isQuizCompleted = getFromStoragePartial(type, 'isQuizCompleted', false);
         if (isQuizCompleted) {
             setIsChatCompleted(true);
@@ -329,28 +394,32 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
             setSelectedUserPreference(type);
         } else {
             handleAddNewTerminal();
-            const apiResponse = [
-                {
-                    question_id: 'r-1',
-                    question: 'What is the capital of Rajasthan?',
-                    possible_answer: 'Jaipur'
-                },
-                {
-                    question_id: 'r-2',
-                    question: 'What is the official language of Rajasthan?',
-                    possible_answer: 'Rajasthani'
-                },
-                {
-                    question_id: 'r-3',
-                    question: 'Which Rajput emperor is credited with building many forts in Rajasthan, including Chittorgarh?',
-                    possible_answer: 'Maharan Kumbha'
-                },
-                {
-                    question_id: 'r-4',
-                    question: 'Which is the largest artificial lake in Rajasthan?',
-                    possible_answer: 'Jaisamand Lake'
-                },
-            ].map((_question) => ({ ..._question, userAnswer: undefined }));
+            let apiResponse = await getQuestions(type);
+            apiResponse = await apiResponse?.json() || [];
+            console.log("apiResponse---------", apiResponse)
+            //  apiResponse = [
+            //     {
+            //         question_id: 'r-1',
+            //         question: 'What is the capital of Rajasthan?',
+            //         possible_answer: 'Jaipur'
+            //     },
+            //     {
+            //         question_id: 'r-2',
+            //         question: 'What is the official language of Rajasthan?',
+            //         possible_answer: 'Rajasthani'
+            //     },
+            //     {
+            //         question_id: 'r-3',
+            //         question: 'Which Rajput emperor is credited with building many forts in Rajasthan, including Chittorgarh?',
+            //         possible_answer: 'Maharan Kumbha'
+            //     },
+            //     {
+            //         question_id: 'r-4',
+            //         question: 'Which is the largest artificial lake in Rajasthan?',
+            //         possible_answer: 'Jaisamand Lake'
+            //     },
+            // ]
+            apiResponse.map((_question) => ({ ..._question, userAnswer: undefined }));
             setSelectedOption(type);
             setSelectedUserPreference(type);
             // setting the userPreference to user-object also so when user start once gaine so he know could know about his last qui also
@@ -380,16 +449,14 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
     }
 
 
+
+
     const handleActionClick = (ActionType: string) => {
         if(ActionType === 'submit'){
-          
-            // if (answers.length) {
-            //     const givenAnswerToSubmit = answers.filter((_answer) => _answer.userAnswer != undefined)
-            //     // setQuizDetails(givenAnswerToSubmit);
-            // }
             setTotalRunningTime(0);
             setIsChatCompleted(true);
             setToStoragePartial(selectedOption, 'isQuizCompleted', true);
+            
         }else if(ActionType === 'skip'){
             if(currentQuestionIndex === questions.length){
                 setIsChatCompleted(true);
@@ -455,7 +522,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
         // set the hints for terminal-2, currsponding to the terminal-1's question
         if (selectedOption && currentQuestionIndex !== null) {
             // get the question-id and set currsponding hints
-            const terminal1QuestionId = questions[currentQuestionIndex]?.question_id;
+            const terminal1QuestionId = questions[currentQuestionIndex]?.id;
 
             if (terminal1QuestionId) {
                 setTerminal2Hints(defaultHints[terminal1QuestionId]);
@@ -542,9 +609,17 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
         }
     }, [terminal2CurrentHintIndex, terminal2Hints?.length]);
 
-    const fetchSuggestionCommnads = () =>{
-       const matchSuggestions = suggestionCommands.filter((_command) => _command.command.toLocaleLowerCase().includes(terminal2Input.toLocaleLowerCase()));
-       setTerminal2SuggestionsList(matchSuggestions);
+    const fetchSuggestionCommnads = async() =>{
+        const queryBody = {
+            quizId: selectedOption,
+            query: terminal2Input,
+        }
+       let suggestionResponse = await getSuggestions(queryBody);
+       suggestionResponse = await suggestionResponse?.json();
+       console.log("suggestionResponse", suggestionResponse)
+
+    //    const matchSuggestions = suggestionCommands.filter((_command) => _command.command.toLocaleLowerCase().includes(terminal2Input.toLocaleLowerCase()));
+       setTerminal2SuggestionsList(suggestionResponse);
     }
 
     useEffect(() => {
@@ -652,15 +727,27 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
 
                         {
                             !selectedOption && showSelectionOptions && <div className="my-4 leading-6">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handleSelectedQuizType('quiz-1')}
-                                    className={`bg-gray-800 hover:bg-gray-700 ${hoveredSelectionOption === 'quiz-1' ? 'bg-gray-700 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-10 font-mono text-green-400 border-green-400 cursor-pointer`}
-                                >
-                                    Quiz
-                                </Button>
-                                &nbsp;
+                                {
+                                  quizOptions.length ?   quizOptions.map((_quiz, index: number) => {
+                                        return <React.Fragment>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => handleSelectedQuizType(_quiz?.id)}
+                                                className={`bg-gray-800 w-auto hover:bg-gray-700 ${hoveredSelectionOption === 'quiz-1' ? 'bg-gray-700 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-4 font-mono text-green-400 border-green-400 cursor-pointer`}
+                                            >
+                                                {_quiz?.category}
+                                            </Button>
+
+                                            &nbsp;
+                                            &nbsp;
+
+                                        </React.Fragment>
+                                    })
+                                : null
+                                }
+                               
+                                {/* &nbsp;
                                 <Button
                                     variant="outline"
                                     size="icon"
@@ -668,7 +755,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                                     className={`bg-gray-800 hover:bg-gray-700 hover:text-green-400 ${hoveredSelectionOption === 'quiz-2' ? 'bg-gray-700 text-green-400' : ''} py-2 h-8 px-10 font-mono text-green-400 border-green-400 break-normal cursor-pointer`}
                                 >
                                     Quiz 2
-                                </Button>
+                                </Button> */}
                             </div>
                         }
                     </div>
