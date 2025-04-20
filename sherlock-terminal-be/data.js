@@ -34,15 +34,17 @@ const data = {
             answers: [
                 // {
                 //     id: "a1",
-                //     questionId: "q1",
+                //     questionId: "r-1",
                 //     answer: "the answer would be like reactjs",
                 //     correctAnswer: false,
+                //     time: 20
                 // },
                 // {
                 //     id: "a2",
-                //     questionId: "q2",
+                //     questionId: "r-2",
                 //     answer: "the answer would be like nodejs",
                 //     correctAnswer: true,
+                //     time: 100
                 // }
             ], // { questionId, is_correct }
             suggestions: [
@@ -105,15 +107,17 @@ const data = {
             answers: [
                 {
                     id: "a1",
-                    questionId: "q1",
+                    questionId: "r-1",
                     answer: "building online application",
-                    correctAnswer: true
+                    correctAnswer: true,
+                    time: 100,
                 },
                 {
                     id: "a2",
-                    questionId: "q2",
+                    questionId: "r-2",
                     answer: "reactjs is is open source js-library, to build single page application",
-                    correctAnswer: true
+                    correctAnswer: true,
+                    time: 150, 
                 }
             ], // { questionId, is_correct }
             suggestions: [

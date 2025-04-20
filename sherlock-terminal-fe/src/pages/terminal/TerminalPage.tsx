@@ -42,32 +42,28 @@ export default function TerminalPage() {
   const [isChatCompleted, setIsChatCompleted] = useState<boolean>(getFromStoragePartial(selectedUserPreference, 'isQuizCompleted', false));
   const [newQuizDetails, setNewQuizDetails] = useState(getFromStoragePartial(selectedUserPreference, 'answer', []));
 
-  const [showFinalResult, setFinalResult] = useState(isChatCompleted);
 
-
-  // useEffect(() => {
-  //   console.log("check ||||||||||", isChatCompleted)
-  //   setFinalResult(isChatCompleted)
-  //   // if every thing is done 
-  //   // once relaod the page 
-  //   // select the userPrefrence which is already selected, 
-  //   // what's why useEffect did not call render-once gain 
-  // }, [isChatCompleted, selectedUserPreference])
-
-  const fetchQuizAnalysis = async() => {
-     let data =  await getQuizAnalysis(selectedUserPreference);
-     data = await data?.json();
-    //  setNewQuizDetails(data);
-     console.log("data=>>>>>>>>>", data, selectedUserPreference)
+  const fetchQuizAnalysis = async(quizId) => {
+    const selectedQuizAnalysis = getFromStoragePartial(selectedUserPreference, 'answer', [])
+    if(selectedQuizAnalysis){
+      setNewQuizDetails(selectedQuizAnalysis)
+    }else{
+      let data =  await getQuizAnalysis(quizId);
+      data = await data?.json();
+      //  setNewQuizDetails(data);
+    }
   }
 
+
   useEffect(() => {
-   if(isChatCompleted){
+   if(isChatCompleted && selectedUserPreference){
     // TODO: need ot work her get the final analysis data to see the quiz report
-    console.log("")
-     fetchQuizAnalysis();
+    setTimeout(() => {
+      fetchQuizAnalysis(selectedUserPreference);
+    }, 1000);
+     
    }
-  }, [isChatCompleted])
+  }, [isChatCompleted, selectedUserPreference])
   
 
 

@@ -5,6 +5,8 @@ export function validateEmail(email : string) {
   
   
   export function convertSecondsToTime(seconds: number) {
+    if(!seconds) return '00:00:00';
+    
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;

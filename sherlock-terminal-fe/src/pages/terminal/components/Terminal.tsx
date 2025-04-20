@@ -106,8 +106,12 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
     const terminalExecutedContainerRef = useRef(null);
     const [questions, setQuestions] = useState(getFromStoragePartial(selectedOption, 'questions', predefinedMessages));
     const [answers, setAnswers] = useState(getFromStoragePartial(selectedOption, 'answer', []));
+
+    // TODO: showSelectionOptions we can remove this state
     const [showSelectionOptions, setShowSelectionOptions] = useState<boolean>(false);
     const [hoveredSelectionOption, setHoveredSelectionOption] = useState('');
+
+     // TODO: showActions we can remove this state
     const [showActions, setShowActions] = useState<boolean>(selectedOption && questions.length ? true : false);
     const [messageToRenderWordByWord, setMessageToRenderWordByWord] = useState<string>('')
     const {displayedText, setDisplayedText} = useTypewriterEffect(messageToRenderWordByWord, []);
@@ -173,8 +177,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
     }, [currentQuestionIndex]);
 
 
-    const updateTheAnswerState = () => {
-    console.log("answer", answers)
+    const updateTheAnswerState = (answerStatus) => {
        
         if (answers.length) {
             setAnswers((preState) => {
@@ -184,6 +187,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                             ..._answer,
                             userAnswer: input ? input : "",
                             time,
+                            correctAnswer: answerStatus?.correctAnswer,
                         }
                     } else {
                         return _answer;
@@ -215,6 +219,24 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
         // setDisplayedText("");
     }
 
+    const submitEachQuestionAnswer = async() => {
+        const answerBody = {
+            params: {
+                quizId: selectedOption,
+                questionId: questions[currentQuestionIndex]?.id,
+            },
+            body: {
+                questionId: questions[currentQuestionIndex]?.id,
+                answer: input,
+                time
+            }
+         }
+         let answerResponse = await submitAnswer(answerBody);
+         answerResponse = await answerResponse?.json();
+
+         return answerResponse;
+    }
+
 
     const handleEnterKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter" && input.trim()) {
@@ -239,29 +261,18 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                     `$ ${input}`
                 ]);
 
-                // check whether user's answer is correct or not
-                 const answerBody = {
-                    params: {
-                        quizId: selectedOption,
-                        questionId: questions[currentQuestionIndex]?.id,
-                    },
-                    body: {
-                        questionId: questions[currentQuestionIndex]?.id,
-                        answer: input,
-                        time
-                    }
-                 }
-                 let answerResponse = await submitAnswer(answerBody);
-                 answerResponse = await answerResponse?.json();
+                const answerStatus = await submitEachQuestionAnswer();
+                updateTheAnswerState(answerStatus);
+
 
                 setDisplayedText("");
-                setMessageToRenderWordByWord(answerResponse?.feedback);
+                setMessageToRenderWordByWord(answerStatus?.feedback);
                 stopTimer(); // timer should be stop untill feedback doesnot completly typed(or untill move to next question)
 
                 setTimeout(() => {
                     setVisibleMessages((prev) => [
                         ...prev,
-                        answerResponse?.feedback
+                        answerStatus?.feedback
                     ]);
 
                     moveToNextQuestion();
@@ -360,10 +371,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                     setUserDetails((prevState) => ({...prevState, name: input}))
                 }
                 moveToNextQuestion();
-            }
-
-            updateTheAnswerState();
-           
+            }           
         }
     };
 
@@ -397,28 +405,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
             let apiResponse = await getQuestions(type);
             apiResponse = await apiResponse?.json() || [];
             console.log("apiResponse---------", apiResponse)
-            //  apiResponse = [
-            //     {
-            //         question_id: 'r-1',
-            //         question: 'What is the capital of Rajasthan?',
-            //         possible_answer: 'Jaipur'
-            //     },
-            //     {
-            //         question_id: 'r-2',
-            //         question: 'What is the official language of Rajasthan?',
-            //         possible_answer: 'Rajasthani'
-            //     },
-            //     {
-            //         question_id: 'r-3',
-            //         question: 'Which Rajput emperor is credited with building many forts in Rajasthan, including Chittorgarh?',
-            //         possible_answer: 'Maharan Kumbha'
-            //     },
-            //     {
-            //         question_id: 'r-4',
-            //         question: 'Which is the largest artificial lake in Rajasthan?',
-            //         possible_answer: 'Jaisamand Lake'
-            //     },
-            // ]
+
             apiResponse.map((_question) => ({ ..._question, userAnswer: undefined }));
             setSelectedOption(type);
             setSelectedUserPreference(type);
@@ -451,11 +438,12 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
 
 
 
-    const handleActionClick = (ActionType: string) => {
+    const handleActionClick = async (ActionType: string) => {
         if(ActionType === 'submit'){
             setTotalRunningTime(0);
             setIsChatCompleted(true);
             setToStoragePartial(selectedOption, 'isQuizCompleted', true);
+            setSelectedUserPreference(selectedOption)
             
         }else if(ActionType === 'skip'){
             if(currentQuestionIndex === questions.length){
@@ -468,8 +456,9 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                 `${questions[currentQuestionIndex]?.question}`,
             ]);
             
+             const answerStatus = await submitEachQuestionAnswer();
             // chnage the answer state
-            updateTheAnswerState();
+            updateTheAnswerState(answerStatus);
 
             // go to next question
             moveToNextQuestion();
@@ -489,6 +478,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                 return;
             }
             
+          
             if (event.key === "ArrowLeft") {
                 setHoveredSelectionOption('quiz-1');
                 event.preventDefault();
@@ -511,7 +501,6 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
         };
 
     }, [showSelectionOptions]);
-
 
 
 
@@ -616,18 +605,20 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
         }
        let suggestionResponse = await getSuggestions(queryBody);
        suggestionResponse = await suggestionResponse?.json();
-       console.log("suggestionResponse", suggestionResponse)
 
     //    const matchSuggestions = suggestionCommands.filter((_command) => _command.command.toLocaleLowerCase().includes(terminal2Input.toLocaleLowerCase()));
        setTerminal2SuggestionsList(suggestionResponse);
     }
 
     useEffect(() => {
-        const timerId = setTimeout(fetchSuggestionCommnads, 300);
-        return () => {
-            clearInterval(timerId)
+        if(IsTerminal2Visible){
+            const timerId = setTimeout(fetchSuggestionCommnads, 300);
+            return () => {
+                clearInterval(timerId)
+            }
         }
-    }, [terminal2Input])
+        
+    }, [terminal2Input, IsTerminal2Visible])
     
 
 
@@ -729,12 +720,12 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                             !selectedOption && showSelectionOptions && <div className="my-4 leading-6">
                                 {
                                   quizOptions.length ?   quizOptions.map((_quiz, index: number) => {
-                                        return <React.Fragment>
+                                        return <React.Fragment key={index}>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => handleSelectedQuizType(_quiz?.id)}
-                                                className={`bg-gray-800 w-auto hover:bg-gray-700 ${hoveredSelectionOption === 'quiz-1' ? 'bg-gray-700 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-4 font-mono text-green-400 border-green-400 cursor-pointer`}
+                                                className={`bg-gray-600 w-auto hover:bg-gray-900 ${hoveredSelectionOption === _quiz?.id ? 'bg-gray-900 text-green-400' : ''} hover:text-green-400 py-2 h-8 px-4 font-mono text-green-400 border-green-400 cursor-pointer`}
                                             >
                                                 {_quiz?.category}
                                             </Button>
@@ -746,16 +737,6 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                                     })
                                 : null
                                 }
-                               
-                                {/* &nbsp;
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handleSelectedQuizType('quiz-2')}
-                                    className={`bg-gray-800 hover:bg-gray-700 hover:text-green-400 ${hoveredSelectionOption === 'quiz-2' ? 'bg-gray-700 text-green-400' : ''} py-2 h-8 px-10 font-mono text-green-400 border-green-400 break-normal cursor-pointer`}
-                                >
-                                    Quiz 2
-                                </Button> */}
                             </div>
                         }
                     </div>
@@ -784,6 +765,7 @@ const Terminal: React.FC = ({ setIsChatCompleted, setSelectedUserPreference, sel
                         </div>
 
                         {/* Action buttons to skip and submit quiz */}
+                        {/* selectedOption !="" */}
                         {       
                             showActions && <div className="mt-2 leading-6">
                                 <Button

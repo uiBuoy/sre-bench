@@ -7,10 +7,10 @@ import { useNavigate } from "react-router-dom";
 
 const HeaderSection = () => (
     <div className="mb-4">
-        <h2 className="text-4xl font-bold flex items-center gap-2 mb-4">
+        <h2 className="text-3xl font-bold flex items-center gap-2 mb-4">
             <span>〢</span> Want to Race with the Sherlock AI?
         </h2>
-        <p className="text-xl">
+        <p className="">
             See how you stack up against our AI SRE by trying to determine root cause for real-world k8s incidents.
         </p>
     </div>
@@ -29,7 +29,7 @@ const StepItem: React.FC<StepItemProps> = ({ stepNumber, text, completed }) => (
         <div className={`w-6 h-6 flex items-center justify-center rounded-full border ${completed ? 'bg-gray-800 text-white' : 'border-gray-400 text-gray-400'}`}>
             {completed ? '✓' : stepNumber}
         </div>
-        <p className="text-xl">{text}</p>
+        <p className="">{text}</p>
     </div>
 );
 
@@ -37,7 +37,7 @@ const StepItem: React.FC<StepItemProps> = ({ stepNumber, text, completed }) => (
 
 const StepsSection = () => (
     <div className="w-full ">
-        <h4 className="font-semibold mb-4 text-xl">Here's how it works:</h4>
+        <h4 className="font-semibold mb-4">Here's how it works:</h4>
         <StepItem stepNumber={1} text="Enter your info (all optional)" />
         <StepItem stepNumber={2} text="Determine root cause in 3 scenarios" />
         <StepItem stepNumber={3} text="Get your score and join the leaderboard!" completed />
@@ -55,17 +55,17 @@ const TerminalSection = () => {
 
     return (
         <div className="">
-            <h4 className="font-semibold mb-0 text-xl  pt-4 mb-4">You can run `kubectl` commands and you'll get a response:</h4>
+            <h4 className="font-semibold mb-0  pt-4 mb-4">You can run `kubectl` commands and you'll get a response:</h4>
             <div className="flex gap-4 items-center mx-4">
 
-                {/* <div className="bg-gray-800 p-4 text-xl font-mono whitespace-pre-wrap rounded-md ">
-                    <div className=" text-xl font-mono rounded-md overflow-x-auto">
+                {/* <div className="bg-gray-800 p-4 font-mono whitespace-pre-wrap rounded-md ">
+                    <div className=" font-mono rounded-md overflow-x-auto">
                         <pre className="whitespace-pre">{content}</pre>
                     </div>
                 </div> */}
 
 
-                <div className="bg-gray-800 p-4 text-xl font-mono whitespace-pre-wrap rounded-md ">
+                <div className="bg-gray-800 p-4 font-mono whitespace-pre-wrap rounded-md ">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {content}
                     </ReactMarkdown>
@@ -81,8 +81,8 @@ const TerminalSection = () => {
 
 const ResultSection = () => (
     <div>
-        <h4 className="font-semibold mb-2 text-xl">Submit your root cause and get a score</h4>
-        <div className="p-4 bg-gray-800 p-4 text-xl font-mono whitespace-pre-wrap rounded-md mx-4">
+        <h4 className="font-semibold mb-2">Submit your root cause and get a score</h4>
+        <div className="p-4 bg-gray-800 p-4 font-mono whitespace-pre-wrap rounded-md mx-4">
 
             {`$ pods are in crashloopbackoff because they're missing the secret for the docker registry!
   Grade: Incorrect! Time to resolution: 5 min`}
@@ -100,7 +100,7 @@ const HomePage = () => {
     }
     return (
         <>
-            <div className="p-10 max-w-full h-svh bg-gray-900 text-green-400 shadow-md">
+            <div className="p-10 max-w-full h-full bg-gray-900 text-green-400 shadow-md text-lg">
                 <HeaderSection />
                 <div className="mx-4">
                     <StepsSection />

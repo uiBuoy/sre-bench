@@ -4,10 +4,10 @@ import React, { useState, useEffect } from "react";
 
 
 
-const checkUserAnswerKeywordsIncludesInActualAnswer = (userAnser: string, actualAnswer: string) => {
-    console.log("userAnser", userAnser)
-    if (userAnser !="" && userAnser !=undefined && actualAnswer.trim().toLowerCase().includes(userAnser.trim().toLowerCase())){
-        return '✅';
+
+const showAnswerStatusBasedOnGivenValue = (status) => {
+     if(status){
+        return '✔';
     }else{
         return '❌';
     }
@@ -48,8 +48,8 @@ const TerminalTable: React.FC = ({ data, handleBack,  selectedUserPreference }) 
 
 
     const newRow = data.map((_item) => {
-        return [_item.question_id, _item.question, _item.userAnswer, 
-            _item.possible_answer, checkUserAnswerKeywordsIncludesInActualAnswer(_item.userAnswer, _item.possible_answer), 
+        return [_item.id, _item.question, _item.userAnswer, 
+            _item.possible_answer, showAnswerStatusBasedOnGivenValue(_item?.correctAnswer), 
             convertSecondsToTime(_item?.time),  "99.98%"];
         
     })

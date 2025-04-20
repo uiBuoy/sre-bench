@@ -28,7 +28,31 @@ exports.submitAnswer = (req, res) => {
         feedback = "FEEDBACK: Your answer is wrong \n ///////////////////////////// -Feedback ended- /////////////////////////////////////"
     }
 
-    quiz.answers.push({...req.body, correctAnswer: randomNumber % 2 === 0 ? true : false});
+    
+    if (quiz.answers.length) {
+        const currentQuestionIn = req.body.questionId
+        const modifiedAnswerState =  quiz.answers.map((_answer, index) => {
+            if (_answer.questionId === currentQuestionIn) {
+                return ({
+                    ..._answer,
+                    ...req.body,
+                    correctAnswer: randomNumber % 2 === 0 ? true : false,
+                })
+            } else {
+                return _answer
+                // return ({
+                //     ..._answer,
+                //     ...req.body,
+                //     correctAnswer: randomNumber % 2 === 0 ? true : false,
+                // });
+            }
+        })
+        quiz.answers = modifiedAnswerState;
+    }else{
+        quiz.answers.push({...req.body, correctAnswer: randomNumber % 2 === 0 ? true : false});
+    }
+
+   
     res.send({
         correctAnswer: randomNumber % 2 === 0 ? true : false,
         feedback
@@ -55,16 +79,16 @@ exports.getQuizAnalysis = (req, res) => {
     const questions = quiz.questions;
     const answers = quiz.answers;
 
-    questions.map((_question, index) => {
+    const modifiedQuestionWithAnswerDetails = questions.map((_question, index) => {
         let currentQuestionIndexAnser = answers[index];
 
-        if(currentQuestionIndexAnser.questionId === _question.id){
-            return ({..._question, ...currentQuestionIndexAnser})
+        if(currentQuestionIndexAnser?.questionId === _question.id){
+            return ({..._question, userAnswer:currentQuestionIndexAnser.answer, ...currentQuestionIndexAnser})
         }else{
-            _question;
+            return  _question;
         }
     })
 
-    res.json(questions);
+    res.json(modifiedQuestionWithAnswerDetails);
 
 }

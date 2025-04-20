@@ -60,8 +60,7 @@ export const createUser = async (userDetails) => {
 }
 
 
-export const getQuizAnalysis = async (data) => {
-   const { quizId } = data;
+export const getQuizAnalysis = async (quizId) => {
    try {
       return fetch(`${BASE_URL}/quizzes/${quizId}/quiz-analysis`);
    } catch (error) {
